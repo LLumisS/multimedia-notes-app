@@ -1,0 +1,27 @@
+{
+  "name": "application",
+  "version": "1.0.0",
+  "description": "multimedia note-taking application",
+  "main": "main/main.js",
+  "type": "module",
+  "scripts": {
+    "start": "electron .",
+    "dev:main": "electron . --inspect",
+    "dev:renderer": "cd renderer && npm run dev",
+    "build:renderer": "cd renderer && npm run build",
+    "dev": "concurrently \"npm:dev:renderer\" \"wait-on tcp:5173 && npm:dev:main\""
+  },
+  "author": "Kyrylo Bukach",
+  "license": "ISC",
+  "dependencies": {
+    "electron": "^36.2.0",
+    "fabric": "^5.3.0",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "electron-devtools-installer": "^4.0.0",
+    "wait-on": "^8.0.3"
+  }
+}
