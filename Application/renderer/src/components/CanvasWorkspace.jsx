@@ -3,6 +3,7 @@ import { Box } from '@mui/material';
 import { fabric } from 'fabric';
 
 function CanvasWorkspace({ isActive, initialData, onContentChange, onCanvasReady, noteId }) {
+    const isSyncingRef = useRef(false);
     const canvasRef = useRef(null); // For the <canvas> element
     const fabricCanvasRef = useRef(null); // For the fabric.Canvas instance
     const containerRef = useRef(null); // For the container div to observe size
@@ -14,8 +15,24 @@ function CanvasWorkspace({ isActive, initialData, onContentChange, onCanvasReady
         [onContentChange]
     );
 
+    useEffect(() => {
+        console.log("CanvasWorkspace0.jsx");
+        const canvas = fabricCanvasRef.current;
+        if (!canvas || !initialData) return;
+
+        isSyncingRef.current = true;
+        canvas.loadFromJSON(initialData, () => {
+            canvas.renderAll();
+            // ждем хотя бы один кадр, прежде чем снова разрешить sync
+            setTimeout(() => {
+                isSyncingRef.current = false;
+            }, 0);
+        });
+    }, [initialData]);
+
     // Initialize Fabric Canvas
     useEffect(() => {
+        console.log("CanvasWorkspace1.jsx");
         if (!canvasRef.current || !containerRef.current) return;
 
         const canvasElement = canvasRef.current;
@@ -41,6 +58,7 @@ function CanvasWorkspace({ isActive, initialData, onContentChange, onCanvasReady
         }
 
         const handleModified = () => {
+            if (isSyncingRef.current) return;
             const json = newFabricCanvas.toDatalessJSON(['id', 'name', /* other custom props if any */]);
             debouncedOnContentChange(json); // Use debounced version
         };
@@ -74,10 +92,11 @@ function CanvasWorkspace({ isActive, initialData, onContentChange, onCanvasReady
                 fabricCanvasRef.current = null;
             }
         };
-    }, [initialData, noteId]); // Re-init if initialData or noteId (tab identity) changes. `noteId` ensures a fresh canvas for a new tab.
+    }, [noteId]); // Re-init if initialData or noteId (tab identity) changes. `noteId` ensures a fresh canvas for a new tab.
 
     // Effect to pass canvas instance when it becomes active
     useEffect(() => {
+        console.log("CanvasWorkspace2.jsx");
         if (isActive && fabricCanvasRef.current && onCanvasReady) {
             onCanvasReady(fabricCanvasRef.current);
         } else if (!isActive && onCanvasReady) {
@@ -89,6 +108,7 @@ function CanvasWorkspace({ isActive, initialData, onContentChange, onCanvasReady
 
     // Effect for handling delete key
     useEffect(() => {
+        console.log("CanvasWorkspace3.jsx");
         if (!isActive || !fabricCanvasRef.current) return;
 
         const canvas = fabricCanvasRef.current;

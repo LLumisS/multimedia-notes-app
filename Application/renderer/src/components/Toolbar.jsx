@@ -8,7 +8,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { fabric } from 'fabric';
 import { dialogService } from '../services/ipcService.js';
 
-function Toolbar({ activeCanvas, currentTab, saveNote }) {
+function Toolbar({ activeCanvas, currentTab, saveNote, isAuthenticated }) {
     const [isDrawingMode, setIsDrawingMode] = useState(false);
     const [textModalOpen, setTextModalOpen] = useState(false);
     const [inputText, setInputText] = useState('');
@@ -80,8 +80,8 @@ function Toolbar({ activeCanvas, currentTab, saveNote }) {
     };
 
     const handleSaveNote = () => {
-        if (currentTab) {
-            saveNote(currentTab.id);
+        if (currentTab && saveNote) {
+            saveNote();
         }
     };
 
@@ -112,9 +112,9 @@ function Toolbar({ activeCanvas, currentTab, saveNote }) {
                 variant="contained"
                 startIcon={<SaveIcon />}
                 onClick={handleSaveNote}
-                disabled={!currentTab || !currentTab.isModified}
+                disabled={!currentTab || !currentTab.isModified || !activeCanvas}
             >
-                Save Note
+                {isAuthenticated ? 'Save & Sync' : 'Save Locally'}
             </Button>
 
             {/* Dialog for Text Input */}
