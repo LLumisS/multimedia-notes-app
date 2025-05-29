@@ -1,9 +1,9 @@
 import apiClient from './apiService';
 
 const boardService = {
-    createBoard: async (jsonData) => {
+    createBoard: async (name, jsonData) => {
         try {
-            const response = await apiClient.post('/boards', { jsonData });
+            const response = await apiClient.post('/boards', { name, jsonData });
             return response.data; // BoardDto
         } catch (error) {
             console.error('Failed to create board:', error.response ? error.response.data : error.message);
@@ -31,9 +31,9 @@ const boardService = {
         }
     },
 
-    updateBoard: async (boardId, jsonData) => {
+    updateBoard: async (boardId, name, jsonData) => {
         try {
-            const response = await apiClient.put(`/boards/${boardId}`, { jsonData });
+            const response = await apiClient.put(`/boards/${boardId}`, { name, jsonData });
             return response.data; // BoardDto
         } catch (error) {
             console.error(`Failed to update board ${boardId}:`, error.response ? error.response.data : error.message);

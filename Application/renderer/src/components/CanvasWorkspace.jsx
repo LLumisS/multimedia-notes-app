@@ -104,7 +104,7 @@ function CanvasWorkspace({ isActive, initialData, onContentChange, onCanvasReady
 
         const canvas = fabricCanvasRef.current;
         const handleDeleteKeyPress = (event) => {
-            if (event.key === 'Delete' || event.key === 'Backspace') {
+            if (event.key === 'Delete') { // Only delete on 'Delete' key
                 const activeObject = canvas.getActiveObject();
                 if (activeObject) {
                     canvas.remove(activeObject);

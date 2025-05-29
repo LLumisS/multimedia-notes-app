@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, AppBar, Tabs, Tab, IconButton, Typography, Button, CircularProgress } from '@mui/material';
+import { Box, AppBar, Tabs, Tab, IconButton, Typography, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, TextField } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import LoginIcon from '@mui/icons-material/Login';
 import LogoutIcon from '@mui/icons-material/Logout';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import EditIcon from '@mui/icons-material/Edit';
 
 import Toolbar from './components/Toolbar.jsx';
 import CanvasWorkspace from './components/CanvasWorkspace.jsx';
@@ -38,6 +39,10 @@ function App() {
     const [tabs, setTabs] = useState([]); // Each tab: { localId, name, fabricCanvasJSON, serverId, isModified, createdAtLocal, lastModifiedLocal }
     const [activeTabId, setActiveTabId] = useState(null); // This will be localId
     const [activeCanvas, setActiveCanvas] = useState(null);
+
+    const [isRenaming, setIsRenaming] = useState(false);
+    const [newTabName, setNewTabName] = useState('');
+    const [tabToRenameId, setTabToRenameId] = useState(null);
 
     const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
     const [currentUser, setCurrentUser] = useState(null); // { id, email }
@@ -87,7 +92,7 @@ function App() {
         if (serverData) { // Creating a local tab from server data
             newTab = {
                 localId: localId, // Or use serverData.id if you want to align localId with serverId for NEWLY FETCHED notes. For existing logic, keep localId distinct.
-                name: serverData.name || `Server Note ${serverData.id.substring(0,6)}`,
+                name: serverData.name || `Server Note ${serverData.id.substring(0,6)}`, // Use server's name
                 fabricCanvasJSON: JSON.parse(serverData.jsonData || '{"version":"5.3.0","objects":[]}'),
                 serverId: serverData.id,
                 isModified: false,
@@ -114,7 +119,7 @@ function App() {
             setActiveTabId(newTab.localId);
         }
         return newTab.localId;
-    }, [tabs.length]);
+    }, [tabs.length]); // tabs.length is a dependency to generate unique default names
 
 
     // --- AUTHENTICATION AND SYNC LOGIC ---
@@ -150,8 +155,10 @@ function App() {
     }, []);
 
     const handleFullSync = async () => {
-        if (!isAuthenticated || !authService.isAuthenticated()) {
-            console.log("Sync skipped: User not authenticated.");
+        // Rely on authService.isAuthenticated() which reads directly from localStorage
+        // The `isAuthenticated` state variable might be stale due to async React state updates.
+        if (!authService.isAuthenticated()) {
+            console.log("Sync skipped: User not authenticated (authService check).");
             return;
         }
         setIsSyncing(true);
@@ -167,7 +174,7 @@ function App() {
             if (!localNote.serverId) { // Local-only, never synced
                 console.log(`Sync: Uploading new local note ${localNote.localId}`);
                 try {
-                    const serverBoard = await boardService.createBoard(JSON.stringify(localNote.fabricCanvasJSON));
+                    const serverBoard = await boardService.createBoard(localNote.name, JSON.stringify(localNote.fabricCanvasJSON));
                     localNote.serverId = serverBoard.id;
                     localNote.lastModifiedLocal = serverBoard.updatedAt; // Align modification time
                     await localNoteService.saveNote(localNote); // Update local file with serverId
@@ -177,10 +184,20 @@ function App() {
                     // Decide on error handling: retry later? Mark as "sync error"?
                 }
             } else {
-                // Optional: If you track `isModifiedSinceLastSync`, upload updates here.
-                // For simplicity, this example focuses on initial sync and new creations/updates.
-                // A robust sync would compare `lastModifiedLocal` with a server timestamp.
-                // For now, we assume if it has a serverId, it might be updated by fetching server notes.
+                // If local note is modified and has a serverId, update it on the server
+                // This assumes `isModified` is correctly set when content or name changes
+                if (localNote.isModified) {
+                    console.log(`Sync: Updating modified local note ${localNote.localId} on server.`);
+                    try {
+                        const serverBoard = await boardService.updateBoard(localNote.serverId, localNote.name, JSON.stringify(localNote.fabricCanvasJSON));
+                        localNote.lastModifiedLocal = serverBoard.updatedAt;
+                        localNote.isModified = false; // Mark as synced
+                        await localNoteService.saveNote(localNote);
+                        updatedLocalTabs[i] = localNote;
+                    } catch (err) {
+                        console.error(`Sync: Failed to update local note ${localNote.localId} on server:`, err);
+                    }
+                }
             }
         }
 
@@ -265,7 +282,7 @@ function App() {
             // Auto-save previous tab if modified (can be part of a useEffect for activeTabId change)
             const previousActiveTab = tabs.find(t => t.localId === activeTabId);
             if (previousActiveTab && previousActiveTab.isModified) {
-                saveNote(previousActiveTab.localId, previousActiveTab.fabricCanvasJSON, true); // true for isAutoSave
+                saveNote(previousActiveTab.localId, previousActiveTab.fabricCanvasJSON, previousActiveTab.name, true); // true for isAutoSave
             }
             setActiveTabId(newActiveTab.localId);
         }
@@ -313,11 +330,11 @@ function App() {
         );
     }, []);
 
-    const saveNote = useCallback(async (localTabId, fabricJSONToSave, isAutoSave = false) => {
+    const saveNote = useCallback(async (localTabId, fabricJSONToSave, name, isAutoSave = false) => {
         const tabIndex = tabs.findIndex(t => t.localId === localTabId);
         if (tabIndex === -1) return;
 
-        let tabToSave = { ...tabs[tabIndex], fabricCanvasJSON: fabricJSONToSave, lastModifiedLocal: new Date().toISOString() };
+        let tabToSave = { ...tabs[tabIndex], name: name, fabricCanvasJSON: fabricJSONToSave, lastModifiedLocal: new Date().toISOString() };
 
         // 1. Save locally
         try {
@@ -341,10 +358,10 @@ function App() {
                 let serverResponse;
                 const payload = JSON.stringify(tabToSave.fabricCanvasJSON);
                 if (tabToSave.serverId) {
-                    serverResponse = await boardService.updateBoard(tabToSave.serverId, payload);
+                    serverResponse = await boardService.updateBoard(tabToSave.serverId, tabToSave.name, payload);
                     console.log(`Note ${tabToSave.serverId} updated on server.`);
                 } else {
-                    serverResponse = await boardService.createBoard(payload);
+                    serverResponse = await boardService.createBoard(tabToSave.name, payload);
                     tabToSave.serverId = serverResponse.id; // Get serverId for new note
                     // Update local file again with the new serverId
                     await localNoteService.saveNote(tabToSave);
@@ -389,6 +406,40 @@ function App() {
         return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><CircularProgress /></Box>;
     }
 
+    const handleRenameClick = (event, tabId) => {
+        event.stopPropagation(); // Prevent tab change
+        const tabToRename = tabs.find(tab => tab.localId === tabId);
+        if (tabToRename) {
+            setTabToRenameId(tabId);
+            setNewTabName(tabToRename.name);
+            setIsRenaming(true);
+        }
+    };
+
+    const handleRenameConfirm = async () => {
+        if (tabToRenameId && newTabName.trim() !== '') {
+            const updatedTabs = tabs.map(tab =>
+                tab.localId === tabToRenameId ? { ...tab, name: newTabName.trim(), isModified: true } : tab
+            );
+            setTabs(updatedTabs);
+
+            // Find the updated tab to save
+            const tabToSave = updatedTabs.find(tab => tab.localId === tabToRenameId);
+            if (tabToSave) {
+                await saveNote(tabToSave.localId, tabToSave.fabricCanvasJSON, tabToSave.name);
+            }
+        }
+        setIsRenaming(false);
+        setNewTabName('');
+        setTabToRenameId(null);
+    };
+
+    const handleRenameCancel = () => {
+        setIsRenaming(false);
+        setNewTabName('');
+        setTabToRenameId(null);
+    };
+
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
             <AppBar position="static" color="default" elevation={0}>
@@ -403,10 +454,13 @@ function App() {
                                 key={tab.localId}
                                 label={
                                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                        <Typography variant="body2" sx={{ textTransform: 'none', mr: 1 }}>
+                                        <Typography variant="body2" sx={{ textTransform: 'none', mr: 0.5 }}>
                                             {tab.name}{tab.isModified ? '*' : ''}{tab.serverId ? '☁️' : ''}
                                         </Typography>
-                                        <IconButton size="small" onClick={(e) => handleCloseTab(e, tab.localId)} sx={{ visibility: tabs.length > 0 ? 'visible' : 'hidden' }}>
+                                        <IconButton size="small" onClick={(e) => handleRenameClick(e, tab.localId)} title="Rename Tab">
+                                            <EditIcon fontSize="inherit" sx={{ fontSize: '1rem' }} />
+                                        </IconButton>
+                                        <IconButton size="small" onClick={(e) => handleCloseTab(e, tab.localId)} sx={{ visibility: tabs.length > 0 ? 'visible' : 'hidden', ml: 0.5 }}>
                                             <CloseIcon fontSize="small" />
                                         </IconButton>
                                     </Box>
@@ -438,7 +492,7 @@ function App() {
             <Toolbar
                 activeCanvas={activeCanvas}
                 currentTab={currentTab}
-                saveNote={() => currentTab && saveNote(currentTab.localId, currentTab.fabricCanvasJSON)}
+                saveNote={() => currentTab && saveNote(currentTab.localId, currentTab.fabricCanvasJSON, currentTab.name)}
                 isAuthenticated={isAuthenticated}
             />
 
@@ -456,6 +510,36 @@ function App() {
                     )}
                 </TabPanel>
             ))}
+
+            {/* Rename Dialog */}
+            <Dialog open={isRenaming} onClose={handleRenameCancel}>
+                <DialogTitle>Rename Tab</DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        Enter the new name for the tab:
+                    </DialogContentText>
+                    <TextField
+                        autoFocus
+                        margin="dense"
+                        id="name"
+                        label="Tab Name"
+                        type="text"
+                        fullWidth
+                        variant="standard"
+                        value={newTabName}
+                        onChange={(e) => setNewTabName(e.target.value)}
+                        onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                                handleRenameConfirm();
+                            }
+                        }}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleRenameCancel}>Cancel</Button>
+                    <Button onClick={handleRenameConfirm}>Rename</Button>
+                </DialogActions>
+            </Dialog>
 
             {showLogin && <LoginForm onSuccess={handleLoginSuccess} onClose={() => setShowLogin(false)} onSwitchToRegister={() => {setShowLogin(false); setShowRegister(true);}} />}
             {showRegister && <RegisterForm onSuccess={() => { setShowRegister(false); setShowLogin(true); alert("Registration successful! Please login.");}} onClose={() => setShowRegister(false)} onSwitchToLogin={() => {setShowRegister(false); setShowLogin(true);}} />}
