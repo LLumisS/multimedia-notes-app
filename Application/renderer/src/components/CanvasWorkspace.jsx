@@ -15,21 +15,6 @@ function CanvasWorkspace({ isActive, initialData, onContentChange, onCanvasReady
         [onContentChange]
     );
 
-    useEffect(() => {
-        console.log("CanvasWorkspace0.jsx");
-        const canvas = fabricCanvasRef.current;
-        if (!canvas || !initialData) return;
-
-        isSyncingRef.current = true;
-        canvas.loadFromJSON(initialData, () => {
-            canvas.renderAll();
-            // ждем хотя бы один кадр, прежде чем снова разрешить sync
-            setTimeout(() => {
-                isSyncingRef.current = false;
-            }, 0);
-        });
-    }, [initialData]);
-
     // Initialize Fabric Canvas
     useEffect(() => {
         console.log("CanvasWorkspace1.jsx");
@@ -51,10 +36,16 @@ function CanvasWorkspace({ isActive, initialData, onContentChange, onCanvasReady
         fabricCanvasRef.current = newFabricCanvas;
 
         // Load initial data if provided
+        isSyncingRef.current = true; // Set to true before loading
         if (initialData && initialData.objects) {
             newFabricCanvas.loadFromJSON(initialData, () => {
                 newFabricCanvas.renderAll();
+                // Ensure isSyncingRef is set to false AFTER loadFromJSON callback completes
+                isSyncingRef.current = false;
             });
+        } else {
+            // If no initial data, still set isSyncingRef to false
+            isSyncingRef.current = false;
         }
 
         const handleModified = () => {
