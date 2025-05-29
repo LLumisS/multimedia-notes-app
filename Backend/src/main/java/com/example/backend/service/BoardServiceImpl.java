@@ -34,7 +34,7 @@ public class BoardServiceImpl implements BoardService {
     public BoardDto createBoard(CreateBoardRequest createBoardRequest, UUID ownerId) {
         User owner = userRepository.findById(ownerId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", ownerId));
-        Board board = new Board(createBoardRequest.getJsonData(), owner);
+        Board board = new Board(createBoardRequest.getName(), createBoardRequest.getJsonData(), owner);
         Board savedBoard = boardRepository.save(board);
         return modelMapper.map(savedBoard, BoardDto.class);
     }
@@ -61,6 +61,7 @@ public class BoardServiceImpl implements BoardService {
     public BoardDto updateBoard(UUID boardId, UpdateBoardRequest updateBoardRequest, UUID ownerId) {
         Board board = boardRepository.findByIdAndOwnerId(boardId, ownerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Board", "id", boardId + " for owner " + ownerId));
+        board.setName(updateBoardRequest.getName());
         board.setJsonData(updateBoardRequest.getJsonData());
         Board updatedBoard = boardRepository.save(board);
         return modelMapper.map(updatedBoard, BoardDto.class);

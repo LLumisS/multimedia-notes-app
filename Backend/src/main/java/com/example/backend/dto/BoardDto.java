@@ -7,6 +7,7 @@ import java.util.UUID;
 @Data
 public class BoardDto {
     private UUID id;
+    private String name;
     private String jsonData;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

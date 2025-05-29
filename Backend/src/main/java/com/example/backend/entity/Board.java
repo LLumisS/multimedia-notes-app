@@ -20,6 +20,9 @@ public class Board {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(name = "name", nullable = false)
+    private String name;
+
     @Lob // For potentially large JSON data
     @Column(name = "json_data", columnDefinition = "TEXT")
     private String jsonData;
@@ -36,7 +39,8 @@ public class Board {
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
 
-    public Board(String jsonData, User owner) {
+    public Board(String name, String jsonData, User owner) {
+        this.name = name;
         this.jsonData = jsonData;
         this.owner = owner;
     }

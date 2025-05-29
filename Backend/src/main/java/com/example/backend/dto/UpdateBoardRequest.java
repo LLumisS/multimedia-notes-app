@@ -6,5 +6,8 @@ import lombok.Data;
 @Data
 public class UpdateBoardRequest {
     @NotBlank
+    private String name;
+
+    @NotBlank
     private String jsonData;
 }
