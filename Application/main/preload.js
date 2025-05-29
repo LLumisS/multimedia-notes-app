@@ -2,11 +2,11 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
     // Notes
-    createNote: (noteData) => ipcRenderer.invoke('notes:create', noteData),
-    getNote: (noteId) => ipcRenderer.invoke('notes:get', noteId),
-    saveNote: (noteId, noteContent) => ipcRenderer.invoke('notes:save', noteId, noteContent),
-    deleteNote: (noteId) => ipcRenderer.invoke('notes:delete', noteId),
-    getAllNotesMetadata: () => ipcRenderer.invoke('notes:get-all-metadata'),
+    saveLocalNote: (noteData) => ipcRenderer.invoke('notes:save-local', noteData),
+    getLocalNote: (localNoteId) => ipcRenderer.invoke('notes:get-local', localNoteId),
+    getAllLocalNotes: () => ipcRenderer.invoke('notes:get-all-local'),
+    deleteLocalNote: (localNoteId) => ipcRenderer.invoke('notes:delete-local', localNoteId),
+    clearAllLocalNotes: () => ipcRenderer.invoke('notes:clear-all-local'),
 
     // Dialogs
     openImageDialog: () => ipcRenderer.invoke('dialog:open-image')

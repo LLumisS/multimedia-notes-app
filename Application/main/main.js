@@ -34,24 +34,24 @@ function createWindow() {
     }
 
     // IPC Handlers
-    ipcMain.handle('notes:create', async (event, noteData) => {
-        return notesManager.createNote(noteData);
+    ipcMain.handle('notes:save-local', async (event, noteData) => {
+        return notesManager.saveLocalNote(noteData);
     });
 
-    ipcMain.handle('notes:get', async (event, noteId) => {
-        return notesManager.getNote(noteId);
+    ipcMain.handle('notes:get-local', async (event, localNoteId) => {
+        return notesManager.getLocalNote(localNoteId);
     });
 
-    ipcMain.handle('notes:save', async (event, noteId, noteContent) => {
-        return notesManager.saveNote(noteId, noteContent);
+    ipcMain.handle('notes:get-all-local', async () => {
+        return notesManager.getAllLocalNotes();
     });
 
-    ipcMain.handle('notes:delete', async (event, noteId) => {
-        return notesManager.deleteNote(noteId);
+    ipcMain.handle('notes:delete-local', async (event, localNoteId) => {
+        return notesManager.deleteLocalNote(localNoteId);
     });
 
-    ipcMain.handle('notes:get-all-metadata', async () => {
-        return notesManager.getAllNotesMetadata();
+    ipcMain.handle('notes:clear-all-local', async () => {
+        return notesManager.clearAllLocalNotes();
     });
 
     ipcMain.handle('dialog:open-image', async () => {
