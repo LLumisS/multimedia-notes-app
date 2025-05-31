@@ -4,12 +4,12 @@ import { fabric } from 'fabric';
 
 function CanvasWorkspace({ isActive, initialData, onContentChange, onCanvasReady, noteId }) {
     const isSyncingRef = useRef(false);
-    const canvasRef = useRef(null); // For the <canvas> element
-    const fabricCanvasRef = useRef(null); // For the fabric.Canvas instance
-    const containerRef = useRef(null); // For the container div to observe size
+    const canvasRef = useRef(null);
+    const fabricCanvasRef = useRef(null);
+    const containerRef = useRef(null);
 
     const debouncedOnContentChange = useCallback(
-        debounce((json) => { // Basic debounce
+        debounce((json) => {
             onContentChange(json);
         }, 500),
         [onContentChange]
@@ -17,13 +17,11 @@ function CanvasWorkspace({ isActive, initialData, onContentChange, onCanvasReady
 
     // Initialize Fabric Canvas
     useEffect(() => {
-        console.log("CanvasWorkspace1.jsx");
         if (!canvasRef.current || !containerRef.current) return;
 
         const canvasElement = canvasRef.current;
         const containerElement = containerRef.current;
 
-        // Ensure existing Fabric canvas is disposed if one exists for this element
         if (fabricCanvasRef.current) {
             fabricCanvasRef.current.dispose();
         }
@@ -31,33 +29,30 @@ function CanvasWorkspace({ isActive, initialData, onContentChange, onCanvasReady
         const newFabricCanvas = new fabric.Canvas(canvasElement, {
             width: containerElement.clientWidth,
             height: containerElement.clientHeight,
-            backgroundColor: '#ffffff', // Default background
+            backgroundColor: '#ffffff',
         });
         fabricCanvasRef.current = newFabricCanvas;
 
         // Load initial data if provided
-        isSyncingRef.current = true; // Set to true before loading
+        isSyncingRef.current = true;
         if (initialData && initialData.objects) {
             newFabricCanvas.loadFromJSON(initialData, () => {
                 newFabricCanvas.renderAll();
-                // Ensure isSyncingRef is set to false AFTER loadFromJSON callback completes
                 isSyncingRef.current = false;
             });
         } else {
-            // If no initial data, still set isSyncingRef to false
             isSyncingRef.current = false;
         }
 
         const handleModified = () => {
             if (isSyncingRef.current) return;
-            const json = newFabricCanvas.toDatalessJSON(['id', 'name', /* other custom props if any */]);
-            debouncedOnContentChange(json); // Use debounced version
+            const json = newFabricCanvas.toDatalessJSON(['id', 'name']);
+            debouncedOnContentChange(json);
         };
 
         newFabricCanvas.on('object:modified', handleModified);
         newFabricCanvas.on('object:added', handleModified);
         newFabricCanvas.on('object:removed', handleModified);
-        // Could add more events like text:changed if needed for finer-grained modification tracking
 
         if (onCanvasReady && isActive) {
             onCanvasReady(newFabricCanvas);
@@ -83,28 +78,23 @@ function CanvasWorkspace({ isActive, initialData, onContentChange, onCanvasReady
                 fabricCanvasRef.current = null;
             }
         };
-    }, [noteId]); // Re-init if initialData or noteId (tab identity) changes. `noteId` ensures a fresh canvas for a new tab.
+    }, [noteId]);
 
     // Effect to pass canvas instance when it becomes active
     useEffect(() => {
-        console.log("CanvasWorkspace2.jsx");
         if (isActive && fabricCanvasRef.current && onCanvasReady) {
             onCanvasReady(fabricCanvasRef.current);
-        } else if (!isActive && onCanvasReady) {
-            // Optional: Notify App.jsx that this canvas is no longer active
-            // onCanvasReady(null); // This might be too aggressive if App.jsx relies on the last active one.
-        }
+        } else if (!isActive && onCanvasReady) {}
     }, [isActive, onCanvasReady, noteId]);
 
 
     // Effect for handling delete key
     useEffect(() => {
-        console.log("CanvasWorkspace3.jsx");
         if (!isActive || !fabricCanvasRef.current) return;
 
         const canvas = fabricCanvasRef.current;
         const handleDeleteKeyPress = (event) => {
-            if (event.key === 'Delete') { // Only delete on 'Delete' key
+            if (event.key === 'Delete') {
                 const activeObject = canvas.getActiveObject();
                 if (activeObject) {
                     canvas.remove(activeObject);
@@ -113,14 +103,12 @@ function CanvasWorkspace({ isActive, initialData, onContentChange, onCanvasReady
                         canvas.discardActiveObject();
                     }
                     canvas.renderAll();
-                    // Trigger content change
                     const json = canvas.toDatalessJSON(['id', 'name']);
                     onContentChange(json);
                 }
             }
         };
 
-        // Attach to window or a focused element. For simplicity, window:
         window.addEventListener('keydown', handleDeleteKeyPress);
         return () => {
             window.removeEventListener('keydown', handleDeleteKeyPress);
@@ -134,7 +122,6 @@ function CanvasWorkspace({ isActive, initialData, onContentChange, onCanvasReady
     );
 }
 
-// Simple debounce function
 function debounce(func, delay) {
     let timeout;
     return function(...args) {

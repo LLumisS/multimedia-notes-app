@@ -19,7 +19,6 @@ export class NotesManager {
     async saveLocalNote(noteData) {
         // noteData: { localId, name, fabricCanvasJSON, serverId, createdAtLocal, lastModifiedLocal }
         if (!noteData.localId) throw new Error('localId is required to save a note.');
-        // const { id, name } = noteData;
         const noteFilePath = path.join(this.notesDir, `${noteData.localId}.json`);
 
         try {

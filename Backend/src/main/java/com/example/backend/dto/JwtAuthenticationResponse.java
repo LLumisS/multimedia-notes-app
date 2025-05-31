@@ -11,7 +11,7 @@ public class JwtAuthenticationResponse {
     private String accessToken;
     private String refreshToken;
     private String tokenType = "Bearer";
-    private String userId; // Send user ID for client convenience
+    private String userId;
     private String email;
 
     public JwtAuthenticationResponse(String accessToken, String refreshToken, String userId, String email) {

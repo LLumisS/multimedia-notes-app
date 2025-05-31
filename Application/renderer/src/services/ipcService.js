@@ -1,4 +1,3 @@
-// Access the functions exposed by preload.js
 const electronAPI = window.electronAPI;
 
 export const noteService = {

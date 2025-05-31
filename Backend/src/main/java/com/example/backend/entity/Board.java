@@ -23,7 +23,7 @@ public class Board {
     @Column(name = "name", nullable = false)
     private String name;
 
-    @Lob // For potentially large JSON data
+    @Lob
     @Column(name = "json_data", columnDefinition = "TEXT")
     private String jsonData;
 

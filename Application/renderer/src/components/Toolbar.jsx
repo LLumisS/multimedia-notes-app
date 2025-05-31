@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Box, Button, IconButton, Tooltip, Divider, Dialog, DialogTitle, DialogContent, TextField, DialogActions } from '@mui/material';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
-import EditIcon from '@mui/icons-material/Edit'; // Pen tool
+import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { fabric } from 'fabric';
@@ -38,20 +38,13 @@ function Toolbar({ activeCanvas, currentTab, saveNote, isAuthenticated }) {
         try {
             const filePath = await dialogService.openImageDialog();
             if (filePath) {
-                // Fabric needs a URL. For local files, we can convert to data URL or ensure Electron serves it.
-                // Simplest for cross-platform: read file as data URL in main process or renderer.
-                // For this example, assume filePath can be used if access is granted.
-                // A more robust way is to read the file and convert to base64 data URL.
-                // This can be done via an IPC call if renderer doesn't have direct fs access.
-                // Let's assume fabric.Image.fromURL can handle file:// paths if appropriately configured or main process helps.
-                // The `dialog:open-image` returns a file path. We convert it to `file://` URL.
                 const imageURL = `file://${filePath}`;
                 fabric.Image.fromURL(imageURL, (img) => {
-                    img.scaleToWidth(200); // Default scale
+                    img.scaleToWidth(200);
                     activeCanvas.add(img);
                     activeCanvas.setActiveObject(img);
                     activeCanvas.renderAll();
-                }, { crossOrigin: 'anonymous' }); // crossOrigin might be needed depending on how files are served/accessed
+                }, { crossOrigin: 'anonymous' });
             }
         } catch (error) {
             console.error("Error adding image:", error);
@@ -63,7 +56,7 @@ function Toolbar({ activeCanvas, currentTab, saveNote, isAuthenticated }) {
         if (!activeCanvas) return;
         const newDrawingMode = !activeCanvas.isDrawingMode;
         activeCanvas.isDrawingMode = newDrawingMode;
-        setIsDrawingMode(newDrawingMode); // For button state
+        setIsDrawingMode(newDrawingMode);
     };
 
     const handleDeleteSelected = () => {
@@ -71,7 +64,7 @@ function Toolbar({ activeCanvas, currentTab, saveNote, isAuthenticated }) {
         const activeObject = activeCanvas.getActiveObject();
         if (activeObject) {
             activeCanvas.remove(activeObject);
-            if (activeObject.type === 'activeSelection') { // If multiple objects selected
+            if (activeObject.type === 'activeSelection') {
                 activeObject.getObjects().forEach(obj => activeCanvas.remove(obj));
                 activeCanvas.discardActiveObject();
             }

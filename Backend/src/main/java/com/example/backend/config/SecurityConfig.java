@@ -57,8 +57,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth ->
                         auth.requestMatchers("/api/auth/**").permitAll()
-                                .requestMatchers("/error").permitAll() // Allow access to Spring Boot's default error page
-                                // Add any other public endpoints here (e.g., API docs if you use Swagger/OpenAPI)
+                                .requestMatchers("/error").permitAll()
                                 .anyRequest().authenticated()
                 );
 

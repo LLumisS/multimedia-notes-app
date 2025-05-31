@@ -29,7 +29,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private JwtTokenProvider tokenProvider;
 
     @Autowired
-    private UserDetailsServiceImpl userDetailsService; // Or UserDetailsService
+    private UserDetailsServiceImpl userDetailsService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -38,19 +38,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String jwt = tokenProvider.parseJwt(request);
             if (jwt != null && tokenProvider.validateJwtToken(jwt)) {
-                String username = tokenProvider.getUsernameFromJwtToken(jwt); // This is the email
+                String username = tokenProvider.getUsernameFromJwtToken(jwt);
 
-                // If using UserDetailsServiceImpl which fetches from DB:
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-
-                // Or if claims are sufficient and DB hit is to be avoided (UserDetailsImpl can be constructed from claims):
-                // Claims claims = tokenProvider.getClaimsFromJwtToken(jwt);
-                // String userId = claims.get("id", String.class);
-                // List<SimpleGrantedAuthority> authorities = Arrays.stream(claims.get("roles", String.class).split(","))
-                //         .map(SimpleGrantedAuthority::new)
-                //         .collect(Collectors.toList());
-                // UserDetails userDetails = new UserDetailsImpl(UUID.fromString(userId), username, "", authorities);
-
 
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());

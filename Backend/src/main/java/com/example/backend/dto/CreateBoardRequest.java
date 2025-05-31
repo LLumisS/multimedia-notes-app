@@ -8,6 +8,6 @@ public class CreateBoardRequest {
     @NotBlank
     private String name;
 
-    @NotBlank // Or allow empty JSON initially
+    @NotBlank
     private String jsonData;
 }

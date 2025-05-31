@@ -27,7 +27,7 @@ function TabPanel(props) {
             hidden={value !== index}
             id={`tabpanel-${index}`}
             aria-labelledby={`tab-${index}`}
-            style={{ height: 'calc(100vh - 48px - 64px)', overflow: 'auto' }} // Adjust height considering AppBar and Toolbar
+            style={{ height: 'calc(100vh - 48px - 64px)', overflow: 'auto' }}
             {...other}
         >
             {value === index && <Box sx={{ height: '100%' }}>{children}</Box>}
@@ -36,8 +36,9 @@ function TabPanel(props) {
 }
 
 function App() {
-    const [tabs, setTabs] = useState([]); // Each tab: { localId, name, fabricCanvasJSON, serverId, isModified, createdAtLocal, lastModifiedLocal }
-    const [activeTabId, setActiveTabId] = useState(null); // This will be localId
+    // Each tab: { localId, name, fabricCanvasJSON, serverId, isModified, createdAtLocal, lastModifiedLocal }
+    const [tabs, setTabs] = useState([]);
+    const [activeTabId, setActiveTabId] = useState(null);
     const [activeCanvas, setActiveCanvas] = useState(null);
 
     const [isRenaming, setIsRenaming] = useState(false);
@@ -63,26 +64,21 @@ function App() {
                 name: note.name || `Note ${note.localId.substring(0,4)}`,
                 fabricCanvasJSON: note.fabricCanvasJSON,
                 serverId: note.serverId || null,
-                isModified: false, // Assume not modified on load
+                isModified: false,
                 createdAtLocal: note.createdAtLocal,
                 lastModifiedLocal: note.lastModifiedLocal,
             }));
             setTabs(mappedTabs);
             if (mappedTabs.length > 0) {
                 setActiveTabId(mappedTabs[0].localId);
-            } else {
-                // "Upon launching, the application automatically opens one new empty tab."
-                // createNewLocalTab(true); // Creates a tab if none exist
-            }
+            } else {}
         } catch (error) {
             console.error("Failed to load local notes:", error);
             alert("Error loading local notes.");
-            // If loading fails, still try to create a new tab
-            // if (tabs.length === 0) createNewLocalTab(true);
         } finally {
             setIsLoading(false);
         }
-    }, []); // Removed tabs.length dependency to avoid loop with createNewLocalTab
+    }, []);
 
     const createNewLocalTab = useCallback(async (makeActive = true, serverData = null) => {
         const localId = generateId();
@@ -91,27 +87,26 @@ function App() {
 
         if (serverData) { // Creating a local tab from server data
             newTab = {
-                localId: localId, // Or use serverData.id if you want to align localId with serverId for NEWLY FETCHED notes. For existing logic, keep localId distinct.
-                name: serverData.name || `Server Note ${serverData.id.substring(0,6)}`, // Use server's name
+                localId: localId,
+                name: serverData.name || `Server Note ${serverData.id.substring(0,6)}`,
                 fabricCanvasJSON: JSON.parse(serverData.jsonData || '{"version":"5.3.0","objects":[]}'),
                 serverId: serverData.id,
                 isModified: false,
-                createdAtLocal: serverData.createdAt || now, // Use server's createdAt if available
-                lastModifiedLocal: serverData.updatedAt || now, // Use server's updatedAt
+                createdAtLocal: serverData.createdAt || now,
+                lastModifiedLocal: serverData.updatedAt || now,
             };
-            // Save this newly fetched server note locally
             await localNoteService.saveNote(newTab);
-        } else { // Creating a brand new local tab (unauthorized or authorized but new)
+        } else {
             newTab = {
                 localId,
                 name: `Untitled ${tabs.length + 1}`,
                 fabricCanvasJSON: { version: fabric.version, objects: [] },
                 serverId: null,
-                isModified: true, // New notes are "modified" until first save
+                isModified: true,
                 createdAtLocal: now,
                 lastModifiedLocal: now,
             };
-            await localNoteService.saveNote(newTab); // Save immediately locally
+            await localNoteService.saveNote(newTab);
         }
 
         setTabs(prevTabs => [...prevTabs, newTab]);
@@ -119,7 +114,7 @@ function App() {
             setActiveTabId(newTab.localId);
         }
         return newTab.localId;
-    }, [tabs.length]); // tabs.length is a dependency to generate unique default names
+    }, [tabs.length]);
 
 
     // --- AUTHENTICATION AND SYNC LOGIC ---
@@ -135,28 +130,26 @@ function App() {
             });
             // If authenticated, full sync will happen after local notes load
             loadLocalNotes().then(() => {
-                if (authService.isAuthenticated()) { // double check after async load
+                if (authService.isAuthenticated()) {
                     handleFullSync();
                 }
             });
         } else {
             setIsAuthenticated(false);
             setCurrentUser(null);
-            loadLocalNotes(); // Load local notes for unauthorized mode
+            loadLocalNotes();
         }
-    }, [loadLocalNotes]); // loadLocalNotes is stable
+    }, [loadLocalNotes]);
 
 
     const handleLoginSuccess = useCallback(async (userData) => {
         setIsAuthenticated(true);
         setCurrentUser({ id: userData.userId, email: userData.email });
         setShowLogin(false);
-        await handleFullSync(); // Sync after login
+        await handleFullSync();
     }, []);
 
     const handleFullSync = async () => {
-        // Rely on authService.isAuthenticated() which reads directly from localStorage
-        // The `isAuthenticated` state variable might be stale due to async React state updates.
         if (!authService.isAuthenticated()) {
             console.log("Sync skipped: User not authenticated (authService check).");
             return;
@@ -165,33 +158,30 @@ function App() {
         console.log("Starting full sync...");
 
         // 1. Get all current local notes (already in `tabs` state or reload for fresh state)
-        const currentLocalNotes = await localNoteService.getAllNotes(); // Get fresh from disk
-        let updatedLocalTabs = [...currentLocalNotes]; // Create a mutable copy
+        const currentLocalNotes = await localNoteService.getAllNotes();
+        let updatedLocalTabs = [...currentLocalNotes];
 
         // 2. Upload local-only or modified-since-last-sync notes
         for (let i = 0; i < updatedLocalTabs.length; i++) {
             let localNote = updatedLocalTabs[i];
-            if (!localNote.serverId) { // Local-only, never synced
+            if (!localNote.serverId) {
                 console.log(`Sync: Uploading new local note ${localNote.localId}`);
                 try {
                     const serverBoard = await boardService.createBoard(localNote.name, JSON.stringify(localNote.fabricCanvasJSON));
                     localNote.serverId = serverBoard.id;
-                    localNote.lastModifiedLocal = serverBoard.updatedAt; // Align modification time
-                    await localNoteService.saveNote(localNote); // Update local file with serverId
-                    updatedLocalTabs[i] = localNote; // Update in our working array
+                    localNote.lastModifiedLocal = serverBoard.updatedAt;
+                    await localNoteService.saveNote(localNote);
+                    updatedLocalTabs[i] = localNote;
                 } catch (err) {
                     console.error(`Sync: Failed to upload new local note ${localNote.localId}:`, err);
-                    // Decide on error handling: retry later? Mark as "sync error"?
                 }
             } else {
-                // If local note is modified and has a serverId, update it on the server
-                // This assumes `isModified` is correctly set when content or name changes
                 if (localNote.isModified) {
                     console.log(`Sync: Updating modified local note ${localNote.localId} on server.`);
                     try {
                         const serverBoard = await boardService.updateBoard(localNote.serverId, localNote.name, JSON.stringify(localNote.fabricCanvasJSON));
                         localNote.lastModifiedLocal = serverBoard.updatedAt;
-                        localNote.isModified = false; // Mark as synced
+                        localNote.isModified = false;
                         await localNoteService.saveNote(localNote);
                         updatedLocalTabs[i] = localNote;
                     } catch (err) {
@@ -209,10 +199,8 @@ function App() {
             // 4. Merge server boards with local
             for (const serverBoard of serverBoards) {
                 const existingLocalIndex = updatedLocalTabs.findIndex(t => t.serverId === serverBoard.id);
-                if (existingLocalIndex !== -1) { // Server board exists locally
+                if (existingLocalIndex !== -1) {
                     const localVersion = updatedLocalTabs[existingLocalIndex];
-                    // Basic conflict resolution: server wins if newer (or if timestamps are tricky, always take server on full sync)
-                    // A more robust check would involve comparing serverBoard.updatedAt with localVersion.lastModifiedLocal
                     const serverJsonData = JSON.parse(serverBoard.jsonData || '{}');
                     if (new Date(serverBoard.updatedAt) > new Date(localVersion.lastModifiedLocal || 0)) {
                         console.log(`Sync: Updating local note ${localVersion.localId} from server ${serverBoard.id}`);
@@ -226,7 +214,7 @@ function App() {
                     console.log(`Sync: Adding new server note ${serverBoard.id} locally.`);
                     const now = new Date().toISOString();
                     const newLocalNote = {
-                        localId: generateId(), // Generate a new local ID for this fetched note
+                        localId: generateId(),
                         name: serverBoard.name || `Server Note ${serverBoard.id.substring(0,6)}`,
                         fabricCanvasJSON: JSON.parse(serverBoard.jsonData || '{}'),
                         serverId: serverBoard.id,
@@ -240,15 +228,14 @@ function App() {
             }
         } catch (err) {
             console.error("Sync: Failed to fetch or merge server boards:", err);
-            // Decide on error handling
         }
 
-        setTabs(updatedLocalTabs.map(note => ({...note, isModified: false }))); // Update UI state
+        setTabs(updatedLocalTabs.map(note => ({...note, isModified: false })));
         if (updatedLocalTabs.length > 0 && !activeTabId) {
             setActiveTabId(updatedLocalTabs[0].localId);
         } else if (updatedLocalTabs.length === 0) {
             setActiveTabId(null);
-            createNewLocalTab(true); // Ensure one tab if all are cleared/gone
+            createNewLocalTab(true);
         }
 
         setIsSyncing(false);
@@ -259,13 +246,13 @@ function App() {
         authService.logout();
         setIsAuthenticated(false);
         setCurrentUser(null);
-        setActiveTabId(null); // Reset active tab
+        setActiveTabId(null);
         setShowProfile(false);
         setIsLoading(true);
         try {
-            await localNoteService.clearAllNotes(); // Clear all local notes on logout
-            setTabs([]); // Clear tabs from UI state
-            createNewLocalTab(true); // Start fresh with one new unauthorized tab
+            await localNoteService.clearAllNotes();
+            setTabs([]);
+            createNewLocalTab(true);
         } catch (error) {
             console.error("Error clearing local notes on logout:", error);
             alert("Error clearing local data. Please restart the application.");
@@ -275,11 +262,10 @@ function App() {
     };
 
 
-    // --- TAB MANAGEMENT AND CONTENT SAVING (MODIFIED) ---
+    // --- TAB MANAGEMENT AND CONTENT SAVING ---
     const handleTabChange = (event, newValue) => {
         const newActiveTab = tabs[newValue];
         if (newActiveTab) {
-            // Auto-save previous tab if modified (can be part of a useEffect for activeTabId change)
             const previousActiveTab = tabs.find(t => t.localId === activeTabId);
             if (previousActiveTab && previousActiveTab.isModified) {
                 saveNote(previousActiveTab.localId, previousActiveTab.fabricCanvasJSON, previousActiveTab.name, true); // true for isAutoSave
@@ -317,7 +303,6 @@ function App() {
                 setActiveTabId(newTabs[newTabs.length - 1].localId); // Activate last tab
             } else {
                 setActiveTabId(null);
-                // createNewLocalTab(true); // Open a new one if all closed
             }
         }
     };
@@ -340,19 +325,16 @@ function App() {
         try {
             await localNoteService.saveNote(tabToSave);
             console.log(`Note ${localTabId} saved locally.`);
-            // Update tab state to reflect it's no longer "modified" from the perspective of the *last save operation*
-            // The `isModified` flag primarily indicates changes since last *explicit or auto save*.
-            // The server sync status is handled by serverId and potentially other flags if complex sync needed.
             setTabs(prev => prev.map(t => t.localId === localTabId ? {...tabToSave, isModified: false} : t));
 
         } catch (error) {
             console.error(`Failed to save note ${localTabId} locally:`, error);
             if (!isAutoSave) alert(`Error saving note locally: ${error.message}`);
-            return; // Don't proceed to server save if local save failed
+            return;
         }
 
         // 2. If authenticated, save/sync to server
-        if (isAuthenticated && authService.isAuthenticated()) { // Double check auth
+        if (isAuthenticated && authService.isAuthenticated()) {
             setIsSyncing(true);
             try {
                 let serverResponse;
@@ -362,18 +344,15 @@ function App() {
                     console.log(`Note ${tabToSave.serverId} updated on server.`);
                 } else {
                     serverResponse = await boardService.createBoard(tabToSave.name, payload);
-                    tabToSave.serverId = serverResponse.id; // Get serverId for new note
-                    // Update local file again with the new serverId
+                    tabToSave.serverId = serverResponse.id;
                     await localNoteService.saveNote(tabToSave);
                     console.log(`Note ${localTabId} created on server with ID ${tabToSave.serverId}.`);
                 }
-                // Update tab in state with serverId and reset modified relative to server sync
                 setTabs(prev => prev.map(t => t.localId === localTabId ? {...tabToSave, serverId: serverResponse.id, lastModifiedLocal: serverResponse.updatedAt, isModified: false } : t));
 
             } catch (error) {
                 console.error(`Failed to save note ${localTabId} to server:`, error);
                 if (!isAutoSave) alert(`Error saving note to server: ${error.message}. It is saved locally.`);
-                // Keep isModified true if server save fails, so user knows it's not synced
                 setTabs(prev => prev.map(t => t.localId === localTabId ? {...tabToSave, isModified: true} : t));
             } finally {
                 setIsSyncing(false);
@@ -389,25 +368,12 @@ function App() {
         setActiveCanvas(canvasInstance);
     }, []);
 
-    // Auto-save on tab switch (if modified)
-    // useEffect(() => {
-    //     let previousTabId = activeTabId;
-    //     return () => { // Cleanup function runs when activeTabId changes or component unmounts
-    //         const tabToAutoSave = tabs.find(t => t.localId === previousTabId);
-    //         if (tabToAutoSave && tabToAutoSave.isModified) {
-    //             console.log(`Auto-saving tab ${tabToAutoSave.name} on switch/blur.`);
-    //             saveNote(tabToAutoSave.localId, tabToAutoSave.fabricCanvasJSON, true);
-    //         }
-    //     };
-    // }, [activeTabId, tabs, saveNote]);
-
-
-    if (isLoading && !tabs.length) { // Show full page loader only on very initial load
+    if (isLoading && !tabs.length) {
         return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><CircularProgress /></Box>;
     }
 
     const handleRenameClick = (event, tabId) => {
-        event.stopPropagation(); // Prevent tab change
+        event.stopPropagation();
         const tabToRename = tabs.find(tab => tab.localId === tabId);
         if (tabToRename) {
             setTabToRenameId(tabId);
@@ -498,11 +464,11 @@ function App() {
 
             {tabs.map((tab, index) => (
                 <TabPanel key={tab.localId} value={activeTabIndex} index={index}>
-                    {tab.localId === activeTabId && currentTab?.fabricCanvasJSON && ( // Ensure currentTab and its canvas data are ready
+                    {tab.localId === activeTabId && currentTab?.fabricCanvasJSON && (
                         <CanvasWorkspace
-                            key={tab.localId} // Important: key change forces re-mount/re-init for different tabs
+                            key={tab.localId}
                             isActive={tab.localId === activeTabId}
-                            initialData={currentTab.fabricCanvasJSON} // Pass currentTab's data
+                            initialData={currentTab.fabricCanvasJSON}
                             onContentChange={(fabricJSON) => updateTabContent(tab.localId, fabricJSON)}
                             onCanvasReady={handleCanvasReady}
                             noteId={tab.localId}

@@ -98,11 +98,6 @@ public class AuthServiceImpl implements AuthService {
                             .collect(Collectors.joining(","));
                     String token = jwtTokenProvider.generateTokenFromUsername(user.getEmail(), user.getId().toString(), roles);
 
-                    // Optionally, rotate refresh token
-                    // RefreshToken newRefreshToken = refreshTokenService.createRefreshToken(user.getId());
-                    // return new JwtAuthenticationResponse(token, newRefreshToken.getToken(), user.getId().toString(), user.getEmail());
-
-                    // Or reuse existing refresh token if not rotating
                     return new JwtAuthenticationResponse(token, requestRefreshToken, user.getId().toString(), user.getEmail());
                 })
                 .orElseThrow(() -> new TokenRefreshException(requestRefreshToken, "Refresh token is not in database!"));

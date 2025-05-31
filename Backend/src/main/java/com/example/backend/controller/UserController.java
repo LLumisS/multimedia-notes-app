@@ -21,13 +21,11 @@ public class UserController {
     private UserService userService;
 
     @PutMapping("/{id}/password")
-    @PreAuthorize("#id.equals(authentication.principal.id.toString()) or hasRole('ADMIN')") // User can change own password, or admin
+    @PreAuthorize("#id.equals(authentication.principal.id.toString()) or hasRole('ADMIN')")
     public ResponseEntity<?> changePassword(@PathVariable UUID id,
                                             @Valid @RequestBody ChangePasswordRequest changePasswordRequest,
                                             @AuthenticationPrincipal UserDetailsImpl currentUser) {
-        // Double check ensuring user is changing their own password or is admin
         if (!currentUser.getId().equals(id) /* && !currentUser.getAuthorities()... check for admin role */ ) {
-            // This check might be redundant due to @PreAuthorize but good for clarity or if @PreAuthorize is complex
             return ResponseEntity.status(403).body(new MessageResponse("Error: You are not authorized to change this user's password."));
         }
         userService.changePassword(id, changePasswordRequest);
@@ -35,7 +33,7 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("#id.equals(authentication.principal.id.toString()) or hasRole('ADMIN')") // User can delete own account, or admin
+    @PreAuthorize("#id.equals(authentication.principal.id.toString()) or hasRole('ADMIN')")
     public ResponseEntity<?> deleteUser(@PathVariable UUID id,
                                         @AuthenticationPrincipal UserDetailsImpl currentUser) {
         if (!currentUser.getId().equals(id) /* && !currentUser.getAuthorities()... check for admin role */ ) {

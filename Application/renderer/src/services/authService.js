@@ -7,9 +7,8 @@ const authService = {
             if (response.data && response.data.accessToken) {
                 localStorage.setItem('accessToken', response.data.accessToken);
                 localStorage.setItem('refreshToken', response.data.refreshToken);
-                localStorage.setItem('userId', response.data.userId); // Store user ID
-                localStorage.setItem('userEmail', response.data.email); // Store user email
-                // Update axios default headers if needed for subsequent requests in the same session tick
+                localStorage.setItem('userId', response.data.userId);
+                localStorage.setItem('userEmail', response.data.email);
                 apiClient.defaults.headers.common['Authorization'] = `Bearer ${response.data.accessToken}`;
             }
             return response.data; // Contains accessToken, refreshToken, userId, email
@@ -37,8 +36,6 @@ const authService = {
         localStorage.removeItem('userEmail');
         // Remove Authorization header from axios defaults
         delete apiClient.defaults.headers.common['Authorization'];
-        // Optionally, call a backend logout endpoint if it exists (e.g., to invalidate refresh token server-side)
-        // await apiClient.post('/auth/logout');
         console.log('Logged out');
     },
 

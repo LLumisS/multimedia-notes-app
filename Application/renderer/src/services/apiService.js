@@ -29,7 +29,7 @@ apiClient.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
         if (error.response && error.response.status === 401 && !originalRequest._retry) {
-            originalRequest._retry = true; // Mark to prevent infinite loops
+            originalRequest._retry = true;
             try {
                 // Attempt to refresh token
                 const refreshToken = localStorage.getItem('refreshToken');
@@ -51,13 +51,13 @@ apiClient.interceptors.response.use(
                 apiClient.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
                 originalRequest.headers['Authorization'] = `Bearer ${data.accessToken}`;
 
-                return apiClient(originalRequest); // Retry the original request with the new token
+                return apiClient(originalRequest);
             } catch (refreshError) {
                 console.error('Token refresh failed:', refreshError);
                 // Clear tokens and redirect to login
                 localStorage.removeItem('accessToken');
                 localStorage.removeItem('refreshToken');
-                window.location.href = '/login'; // Or use React Router
+                window.location.href = '/login';
                 return Promise.reject(refreshError);
             }
         }

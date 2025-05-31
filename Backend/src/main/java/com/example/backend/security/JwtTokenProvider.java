@@ -38,8 +38,8 @@ public class JwtTokenProvider {
                 .collect(Collectors.joining(","));
 
         return Jwts.builder()
-                .subject(userPrincipal.getUsername()) // email
-                .claim("id", userPrincipal.getId().toString()) // Add user ID as a claim
+                .subject(userPrincipal.getUsername())
+                .claim("id", userPrincipal.getId().toString())
                 .claim("roles", authorities)
                 .issuedAt(new Date())
                 .expiration(new Date((new Date()).getTime() + jwtExpirationMs))
